@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <http:listener-config name="salesforceapi-httpListenerConfig">
+        <http:listener-connection host="${listener.host}" port="${listener.port}" />
+    </http:listener-config>
+    <apikit:config name="salesforceapi-config" api="salesforceapi.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="4b5ea457-b609-45bb-8127-cba77233d784" >
+		<http:request-connection host="${salesforce.host}" />
+	</http:request-config>
+	<cloudhub:config name="CloudHub_Config" doc:name="CloudHub Config" doc:id="52329d16-3031-465a-a84a-bab3253b138e" >
+		<cloudhub:connection username="pprasanth" password="Prasanth1" environment="56cb4072-2921-40fd-9b26-0dc42204e285" />
+	</cloudhub:config>
+	<cloudhub:config name="CloudHub_Config1" doc:name="CloudHub Config" doc:id="24bbf558-7f7c-4b72-bf5c-f920778b6a51" >
+		<cloudhub:connection username="pprasanth" password="Prasanth1" environment="56cb4072-2921-40fd-9b26-0dc42204e285" />
+	</cloudhub:config>
+	<http:request-config name="HTTP_Request_configuration1" doc:name="HTTP Request configuration" doc:id="a3d590ce-ea14-44c7-b277-cb5863e69042" >
+		<http:request-connection host="${salesforce.host}" />
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="54d989d4-4f7c-45b2-bda6-2b5007c93720" file="dev.properties" />
+	<flow name="salesforceapi-main">
+        <http:listener config-ref="salesforceapi-httpListenerConfig" path="${listener.path}">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="salesforceapi-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\checkin:application\json:salesforceapi-config">
+        <logger level="INFO" message="#[payload]" />
+		<ee:transform doc:name="intialize prouductId variable" doc:id="330bede2-426b-4560-8122-7f441c6ec29a" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="productid" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.data.productId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="info" doc:id="7a04cc39-5b5f-4c15-8fd0-229689edd86d" message="productId:::::::#[vars.productId]"/>
+		<logger level="DEBUG" doc:name="debug" doc:id="fe19c7eb-97e2-4fa6-98ee-bc4c6fefd5e6" message="request recieved from source #[payload]" category="com.aptude.checkin"/>
+		<choice doc:name="Choice" doc:id="cf170716-e2bf-4bde-a986-62e15e02ffec" >
+			<when expression='#[payload.data.unitOfMeasure == "EA"]'>
+				<ee:transform doc:name="mapping" doc:id="db9df91e-1a88-4c36-943b-6500c6be1eb8" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+"distributionGroup" : payload.data.distributionGroup,
+"segment" : payload.data.segment,
+"segmentType" : payload.data.segmentType,
+"shipNode" : payload.data.shipNode,
+"unitOfMeasure" : payload.data.unitOfMeasure,
+"currentAvailability" : payload.data.currentAvailability,
+
+
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="INFO" doc:id="ee4bd0e8-eaff-478d-a7a7-7239d1576b71" message="After transformation productId #[vars.productId]"/>
+				<logger level="DEBUG" doc:name="Logger" doc:id="6e74a75f-c93b-484a-b0b4-7ba6f0b63596" category="com.aptude.checkin" message="transformed payload #[payload]"/>
+				<http:request doc:name="Request" doc:id="b502828c-58ef-4a68-983a-851f1192c13f" config-ref="HTTP_Request_configuration1" method="${salesforce.method}" path="${salesforce.path}"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="766c557d-eb0b-4c29-9b81-99b97b133342" message="condition not satisifed for productId #[vars.product.Id]"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="059c3061-ff2e-43eb-a19a-dafa3769a144" type="HTTP:TIMEOUT">
+				<ee:transform doc:name="Transform Message" doc:id="4bce9021-df2f-46a5-a19a-3ca821850049" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message":error.errorType,
+	"message" : error.description,
+	"producid": vars.productId
+ 
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Transform Message" doc:id="72ef9994-5470-4387-a531-1e26f7fa81e4" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output text/plain
+---
+payload.^rawasString]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<cloudhub:create-notification domain="salesforce-orgs" doc:name="Create Notification" doc:id="78756e25-5490-4c0b-843f-a4e531541798" config-ref="CloudHub_Config1">
+				</cloudhub:create-notification>
+			</on-error-continue>
+		</error-handler>
+    </flow>
+</mule>
